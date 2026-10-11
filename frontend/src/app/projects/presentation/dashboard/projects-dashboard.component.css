@@ -1,0 +1,21 @@
+:host { display: block; }
+main { max-width: 960px; margin: 40px auto; padding: 0 20px; }
+h1 { margin: 8px 0; font-size: clamp(1.7rem, 4vw, 2.4rem); }
+.eyebrow { text-transform: uppercase; letter-spacing: .12em; color: #45617d; }
+.panel, article { background: white; border: 1px solid #d5deea; border-radius: 12px; padding: 24px; }
+.panel { margin: 28px 0; }
+label { display: block; margin-bottom: 8px; }
+select { width: 100%; max-width: 420px; padding: 12px; font: inherit; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr)); gap: 16px; }
+h3 { font-size: 1rem; margin-top: 0; }
+strong { font-size: 2rem; }
+select:focus-visible { outline: 3px solid #2457a7; outline-offset: 3px; }
+select:disabled { background: #edf1f7; color: #45617d; }
+.feedback { margin: 16px 0 0; }
+.feedback:empty { display: none; }
+.error { color: #9b1c1c; background: #fff1f1; border: 1px solid #e7b3b3; border-radius: 8px; padding: 12px; }
+h2, h3, strong { overflow-wrap: anywhere; }
+@media (max-width: 480px) {
+  main { margin: 24px auto; padding: 0 16px; }
+  .panel, article { padding: 16px; }
+}

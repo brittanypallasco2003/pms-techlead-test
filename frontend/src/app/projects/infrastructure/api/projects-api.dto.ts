@@ -1,11 +1,11 @@
-export interface Project {
+export interface ProjectResponseDto {
   id: string;
   name: string;
   budget: number;
-  status: 'active' | 'archived';
+  status: string;
 }
 
-export interface ProjectSummary {
+export interface ProjectSummaryResponseDto {
   project_id: string;
   name: string;
   activity_count: number;
