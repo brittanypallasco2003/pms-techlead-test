@@ -5,11 +5,12 @@ import { ProjectsRepository } from '../../application/ports/projects.repository'
 import { Project } from '../../domain/models/project.model';
 import { ProjectSummary } from '../../domain/models/project-summary.model';
 import { ProjectResponseDto, ProjectSummaryResponseDto } from './projects-api.dto';
+import { environment } from '../../../environments/environment';
 
 @Injectable()
 export class HttpProjectsRepository implements ProjectsRepository {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = '/api';
+  private readonly baseUrl = environment.apiUrl;
 
   list(): Observable<Project[]> {
     return this.http.get<ProjectResponseDto[]>(`${this.baseUrl}/projects`).pipe(
