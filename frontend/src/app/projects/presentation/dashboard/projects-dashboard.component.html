@@ -1,0 +1,40 @@
+<main>
+  <header>
+    <p class="eyebrow">Laboratorio ADA</p>
+    <h1>Seguimiento de proyectos</h1>
+    <p>Indicadores de actividades y avance.</p>
+  </header>
+  <section class="panel" aria-labelledby="selection-title">
+    <h2 id="selection-title">Proyecto</h2>
+    <label for="project">Seleccione un proyecto</label>
+    <select
+      #projectSelect
+      id="project"
+      [value]="selectedId()"
+      [disabled]="loadingProjects() || projects().length === 0"
+      [attr.aria-busy]="loadingProjects()"
+      [attr.aria-describedby]="error() ? 'project-status project-error' : 'project-status'"
+      aria-controls="project-summary"
+      (change)="selectProject(projectSelect.value)">
+      <option value="">Seleccione…</option>
+      @for (project of projects(); track project.id) {
+        <option [value]="project.id">{{ project.name }}</option>
+      }
+    </select>
+    <p id="project-status" class="feedback" role="status" aria-live="polite" aria-atomic="true">{{ message() }}</p>
+    @if (error()) {
+      <p id="project-error" class="feedback error" role="alert">{{ error() }}</p>
+    }
+  </section>
+  <section id="project-summary" aria-label="Resumen del proyecto" [attr.aria-busy]="loadingSummary()">
+    @if (summary(); as value) {
+      <h2 id="summary-title">{{ value.name }}</h2>
+      <div class="cards">
+        <article><h3>Actividades</h3><strong>{{ value.activityCount }}</strong></article>
+        <article><h3>Completadas</h3><strong>{{ value.completedCount }}</strong></article>
+        <article><h3>Horas totales</h3><strong>{{ value.totalHours | number:'1.0-2' }}</strong></article>
+        <article><h3>Avance</h3><strong>{{ value.completionRate | percent:'1.0-1' }}</strong></article>
+      </div>
+    }
+  </section>
+</main>
