@@ -1,75 +1,131 @@
 # Informe de entrega
 
-## URLs y ejecución
+- Repositorio: [GitHub](https://github.com/brittanypallasco2003/pms-techlead-test).
+- Dashboard: [Render Static Site](https://pms-techlead-test-frontend.onrender.com).
+- API: [Render Web Service](https://pms-techlead-test.onrender.com).
+- Estado de la API: [Health](https://pms-techlead-test.onrender.com/health).
+- Documentación API: [Swagger](https://pms-techlead-test.onrender.com/docs).
 
-Dashboard Render:
-API Render:
+## Ejecución, build y pruebas
 
-### Comandos locales, build y pruebas:
+Requisitos: Python 3.12 y Node.js 22.12+ de la rama 22 o Node.js 24.
+Comandos para PowerShell, desde la raíz:
 
-- Backend, desde la raíz: `.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000`.
-- Suite backend: ``.
-- Comprobación del cambio de listado: `.\.venv\Scripts\python.exe -B -m pytest -q -p no:cacheprovider tests/test_api.py -k "health or list"`.
-- Frontend, desde `frontend/`: `npm start`; build: `npm run build`.
-- Pruebas frontend, desde `frontend/`: `npm test` (Angular CLI + Vitest, sin modo watch).
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+Copy-Item .env.example .env  # Solo la primera vez; configurar la base de prueba.
+.\.venv\Scripts\python.exe -m scripts.seed
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
 
-La arquitectura se está separando por módulos funcionales: `projects` y `activities`.
-En el listado, el dominio define `Project` como dataclass y el contrato
-`ProjectRepository`; `ListProjects` depende de ese contrato. El adaptador MongoDB
-selecciona los campos necesarios y transforma documentos en entidades. El adaptador
-HTTP construye `ProjectResponse`, con `budget: float`, y declara `response_model`.
-`main.py` configura la aplicación y registra routers; las funciones heredadas sin
-ruta se conservan en `app/legacy.py` para revisión.
+En otra terminal, pruebas backend con mongomock, sin depender de Atlas:
 
-Si desea cargar la fixture de demostración del repositorio en su base de prueba,
-ejecute `.\.venv\Scripts\python.exe -m scripts.seed` desde la raíz. SAT debe
-mostrar `3`, `2`, `35` y `66.7%`; Chatbots debe mostrar `0`, `0`, `0` y `0%`.
-Cambiar de proyecto debe retirar las tarjetas mientras carga y seleccionar la
-opción vacía debe limpiarlas. Detener la API y seleccionar otro proyecto permite
-comprobar el error de resumen; recargar la página con la API detenida permite
-comprobar el error de lista.
+```powershell
+$env:MONGO_URL = 'mongodb://localhost:27017'
+$env:DATABASE = 'ada_exam'
+.\.venv\Scripts\python.exe -B -m pytest -q -p no:cacheprovider
+```
+La URI local evita la resolución DNS de Atlas al importar `app.database`.
+Para el frontend, desde otra terminal:
 
-Las secciones siguientes conservan los hallazgos y resultados de la revisión
-anterior; los resultados del frontend y del contrato HTTP actuales son los de esta
-actualización.
-
-## Hasta tres problemas prioritarios
-
-Ubicación, evidencia, consecuencia y solución. Señale al menos una corrección
-realizada y cómo la verificó.
-
-1. **Listado sin protección del contrato de salida — corregido.** Ubicación
-   original: `app/main.py:list_projects`, `app/models.py:ProjectResponse` y
-   `tests/test_api.py:test_list`. El listado devolvía documentos de MongoDB tras
-   cambiar únicamente `_id` por `id`, por lo que también publicaba `metadata`,
-   `created_by` y cualquier campo adicional. La prueba solo comprobaba HTTP 200 y
-   cantidad de proyectos. Además, el DTO de respuesta, sin utilizar, declaraba
-   `budget` como cadena. Se reprodujo la exposición mediante documentos con campos
-   internos. Consecuencia: incumplimiento del contrato público y prueba incapaz de
-   detectar esa regresión. Solución: proyección de campos en
-   `app/projects/infrastructure/persistence/mongo_project_repository.py`, entidad
-   independiente y esquema de respuesta explícito en
-   `app/projects/infrastructure/http/schemas.py`. La prueba reforzada compara los
-   campos exactos, los datos de la fixture y el tipo numérico del presupuesto.
-
-2. **Configuración que ignora el entorno — pendiente.** Ubicación:
-   `app/config.py`. Al establecer `MONGO_URL` y `DATABASE` en un proceso temporal y
-   recargar el módulo, se conservaron los valores escritos en el archivo.
-   Consecuencia: configurar Atlas mediante variables en Render no cambia la
-   conexión, que sigue apuntando a localhost. Solución propuesta: leer las variables
-   del entorno y verificar que sus valores se respetan.
-
-3. **Prueba heredada que solo verifica su propio mock — pendiente.** Ubicación:
-   `review_examples/test_legacy_mock.py:test_repository_failure`. Configura un mock
-   para devolver un diccionario con `status_code: 503` y comprueba ese mismo valor,
-   sin ejecutar código productivo ni una petición HTTP. Consecuencia: no verifica
-   el manejo de fallos de persistencia. Solución propuesta: provocar un fallo en la
-   dependencia de persistencia y comprobar la respuesta HTTP de una ruta real.
+```powershell
+cd frontend
+npm install
+npm start      # http://localhost:4200
+npm run build # dist/dashboard/browser
+npm test      # Angular CLI + Vitest, sin watch
+```
 
 ## Despliegue y configuración
 
+| Elemento | Configuración |
+|---|---|
+| API en Render | Raíz del repositorio; Python 3.12; build: `pip install -r requirements.txt` |
+| Arranque API | `uvicorn app.main:app --host 0.0.0.0 --port $PORT` |
+| Angular en Render | Root Directory: `frontend`; Node.js 24; build: `npm ci && npm run build`; publicación: `dist/dashboard/browser` |
+| Backend | `MONGO_URL`: URI privada de Atlas; `DATABASE`: nombre de la base; `ALLOWED_ORIGINS`: `https://pms-techlead-test-frontend.onrender.com` |
+| Frontend | `environment.ts`: URL HTTPS pública de la API; `environment.development.ts`: `/api`, mediante el proxy local a `127.0.0.1:8000` |
 
-## Herramientas y pendientes
+`app/config.py` carga el `.env` de la raíz y da prioridad a las variables del
+proceso. Los valores por defecto son MongoDB local, base `ada_exam` y origen
+`http://localhost:4200`. `REPORT_TOKEN` pertenece al código heredado.
 
-Se utilizó Codex/ChatGPT separar el listado en capas y fortalecer sus pruebas.
-La modificación se verificó ejecutando pytest y consultando la API local.
+### Configuración de MongoDB Atlas
+
+1. Creó un cluster en MongoDB Atlas.
+2. Registró un usuario en Database Access con permisos
+   sobre la base de datos de la aplicación.
+3. Autorizó los rangos de IP de salida de Render
+   en Network Access.
+4. Obtuvo la cadena de conexión de MongoDB Atlas.
+5. Configuró MONGO_URL y DATABASE en las variables
+   de entorno del Web Service de Render.
+
+## Hallazgos prioritarios
+
+1. **Exposición de campos internos en el listado — corregido.**
+   **Ubicación:** `app/main.py:list_projects` y `tests/test_api.py:test_list` en
+   la versión heredada (`b98d9c6`). **Evidencia:** se devolvía el documento completo
+   después de cambiar `_id` por `id`; la prueba solo comprobaba HTTP 200 y longitud.
+   **Consecuencia:** exposición de `metadata`, `created_by` y otros campos, sin
+   detectar incumplimientos del contrato. **Solución aplicada:** proyección en
+   `app/projects/infrastructure/persistence/mongo_project_repository.py` y
+   `response_model` en `app/projects/infrastructure/http/router.py`, con
+   `budget: float` en `dtos/response/project_response.py` de ese módulo.
+   **Verificación:** `tests/projects/infrastructure/http/test_projects_api.py:test_list`
+   introduce campos internos y exige exactamente `id`, `name`, `budget`, `status`,
+   los valores esperados y presupuesto numérico; pasó en esta revisión.
+
+2. **Configuración fija que impedía usar el entorno — corregido.**
+   **Ubicación:** `app/config.py` heredado. **Evidencia:** la configuración anterior
+   mantenía los valores del archivo aunque se definieran `MONGO_URL` y `DATABASE`;
+   la corrección está registrada en `9df5d0d`. **Consecuencia:** Render podía seguir
+   apuntando a localhost en lugar de Atlas. **Solución aplicada:** leer variables
+   con `os.getenv`, cargar `.env` con `override=False` y configurar CORS mediante
+   `ALLOWED_ORIGINS`. **Verificación:** las tres pruebas de `tests/test_config.py`
+   comprueban valores por defecto, carga de `.env` desde otro directorio y
+   prioridad del entorno; todas pasaron.
+
+## Verificación del flujo y las correcciones
+
+Resultados verificados el 11 de octubre de 2026:
+
+- Backend: **22 pruebas pasaron**, incluidos resumen correcto, proyecto inexistente
+  (404), proyecto sin actividades, ID inválido (422), aislamiento entre proyectos
+  y las correcciones de contrato y configuración.
+- Frontend: **10 pruebas pasaron** con el ajuste temporal de Vitest indicado arriba.
+  Ejercitan el componente y el adaptador HTTP productivos: indicadores, ceros,
+  errores, cambio de proyecto y limpieza de tarjetas.
+- Build: `npm run build` terminó correctamente y generó `dist/dashboard/browser`.
+- Servicios públicos: dashboard, `/health`, `/projects` y los resúmenes devolvieron
+  HTTP 200; también se comprobaron 404 y 422. La API permite el origen concreto del
+  dashboard mediante CORS y el bundle Angular contiene la URL HTTPS de la API.
+
+| Proyecto | Actividades | Completadas | Horas totales | Avance en el dashboard |
+|---|---|---|---|---|
+| SAT | 3 | 2 | 35 | 66.7% |
+| Chatbots | 0 | 0 | 0 | 0% |
+
+La captura siguiente muestra SAT en el dashboard desplegado con los valores que
+devuelve la API. Junto con la configuración de Atlas confirmada por la autora,
+documenta el flujo navegador → API → MongoDB Atlas.
+
+## Dashboard
+
+![Dashboard con datos cargados desde Mongo DB Atlas](dashboard_with_data.png)
+
+![Ejemplo dashboard error](dashboard_error.png)
+
+
+## Herramientas utilizadas y pendientes
+
+Codex apoyó la creación del subagente `git-manager` de OpenCode, definido en
+[.opencode/agents/git-manager.md](.opencode/agents/git-manager.md), para orientar
+a los estudiantes en la gestión de ramas, la revisión de cambios y la creación
+de commits con mensajes según Conventional Commits (`tipo(alcance): descripción`).
+El subagente también incluye instrucciones para preparar y revisar pull requests.
+Codex se utilizó además para revisar y actualizar este informe.
+
+La verificación usó Git, Python/pytest, FastAPI TestClient, mongomock, Angular CLI,
+Vitest, HttpTestingController y consultas HTTP a los servicios públicos.
